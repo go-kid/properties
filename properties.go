@@ -67,20 +67,21 @@ func (p Properties) flatSet(key string, val any, appendMode bool) error {
 }
 
 func (p Properties) set(key string, val any, appendMode bool) {
+	a, ok := p.get(key)
+	if !ok {
+		p[key] = val
+		return
+	}
 	if appendMode {
-		a, ok := p.get(key)
-		if !ok {
-			p[key] = val
-			return
-		}
 		switch a.(type) {
 		case []any:
 			p[key] = append(a.([]any), val)
 		default:
 			p[key] = []any{a, val}
 		}
+	} else {
+		p[key] = val
 	}
-	p[key] = val
 }
 
 func (p Properties) get(key string) (any, bool) {
