@@ -1,7 +1,13 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/go-kid/strconv2 v0.0.1 h1:gWn2QTslYPmt8F8NV7sIr4279xnPL6/boU0Hzy+RGy4=
+github.com/go-kid/strconv2 v0.0.1/go.mod h1:G6HFlDtWK/k/qARuJsD9K+pIwtoGeM9pwAqoGTN5gtI=
+github.com/go-kid/strings2 v0.0.1 h1:mAxi0r9m8TkF0bY0EfWM71nCRB4Ulw7WZp2xd1RUWOQ=
+github.com/go-kid/strings2 v0.0.1/go.mod h1:wcgoCTUN+tzPyjnYzMMNRALAl2KBT1jNA6lble5PWko=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=

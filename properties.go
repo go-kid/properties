@@ -2,6 +2,7 @@ package properties
 
 import (
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"reflect"
 	"sort"
 	"strings"
@@ -18,6 +19,10 @@ func (p Properties) Add(key string, val any) {
 }
 
 func (p Properties) setWithMode(key string, val any, appendMode bool) {
+	if val == nil {
+		p.set(key, val, appendMode)
+		return
+	}
 	switch t := reflect.TypeOf(val); t.Kind() {
 	case reflect.Map, reflect.Struct:
 		err := p.flatSet(key, val, appendMode)
@@ -39,54 +44,24 @@ func (p Properties) setWithMode(key string, val any, appendMode bool) {
 }
 
 func (p Properties) Get(key string) (any, bool) {
-	v, ok := p.get(key)
-	if ok {
-		return v, true
-	}
-	tmp := make(map[string]any)
-	for s, a := range p {
-		if i := strings.Index(s, key); i >= 0 && s[i+len(key)] == '.' {
-			buildMap(s, a, &tmp)
-		}
-	}
-	if len(tmp) == 0 {
-		return nil, false
-	}
-	return tmp, true
+	return p.get(key)
 }
 
 func (p Properties) flatSet(key string, val any, appendMode bool) error {
-	subProp, err := convertAny2Prop(val)
+	subProp, err := decodeToMap(val)
 	if err != nil {
 		return err
 	}
-	for s, a := range subProp {
-		p.set(path(key, s), a, appendMode)
-	}
+	buildMap(key, subProp, (*map[string]any)(&p), appendMode)
 	return nil
 }
 
 func (p Properties) set(key string, val any, appendMode bool) {
-	a, ok := p.get(key)
-	if !ok {
-		p[key] = val
-		return
-	}
-	if appendMode {
-		switch a.(type) {
-		case []any:
-			p[key] = append(a.([]any), val)
-		default:
-			p[key] = []any{a, val}
-		}
-	} else {
-		p[key] = val
-	}
+	buildMap(key, val, (*map[string]any)(&p), appendMode)
 }
 
 func (p Properties) get(key string) (any, bool) {
-	a, ok := p[key]
-	return a, ok
+	return getMap(p, key)
 }
 
 type ValueSet struct {
@@ -95,9 +70,10 @@ type ValueSet struct {
 }
 
 func (p Properties) ValueSets() []*ValueSet {
-	sets := make([]*ValueSet, len(p))
+	properties := p.ToPropertiesMap()
+	sets := make([]*ValueSet, len(properties))
 	i := 0
-	for s, a := range p {
+	for s, a := range properties {
 		sets[i] = &ValueSet{
 			Key:   s,
 			Value: a,
@@ -110,17 +86,13 @@ func (p Properties) ValueSets() []*ValueSet {
 	return sets
 }
 
-func (p Properties) Expand() map[string]any {
-	tmp := make(map[string]any)
-	for k, v := range p {
-		buildMap(k, v, &tmp)
-	}
-	return tmp
+func (p Properties) ToPropertiesMap() map[string]any {
+	return flatten("", p)
 }
 
 func (p Properties) Marshal() ([]byte, error) {
 	var pairs = make(map[string]any)
-	for key, a := range p {
+	for key, a := range p.ToPropertiesMap() {
 		f, err := formatPropertiesPair(a)
 		if err != nil {
 			return nil, err
@@ -155,4 +127,13 @@ func (p Properties) Marshal() ([]byte, error) {
 		sb.WriteString(fmt.Sprintf("%s=%v\n", key, v))
 	}
 	return []byte(sb.String()), nil
+}
+
+func (p Properties) Unmarshal(v any) error {
+	config := newDecodeConfig(v)
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(p)
 }

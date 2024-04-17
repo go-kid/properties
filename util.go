@@ -8,33 +8,60 @@ import (
 	"strings"
 )
 
-func buildMap(path string, val any, tmp *map[string]any) {
+func buildMap(path string, val any, tmp *map[string]any, appendMode bool) {
 	rtmp := *tmp
 	arr := strings.SplitN(path, ".", 2)
-	if len(arr) > 1 {
+	if len(arr) == 2 {
 		key := arr[0]
 		next := arr[1]
-		switch sub := rtmp[key]; sub.(type) {
-		case map[string]any:
-			m := sub.(map[string]any)
-			buildMap(next, val, &m)
+		value := rtmp[key]
+		if value == nil {
+			value = make(map[string]any)
+			rtmp[key] = value
+		}
+		switch value.(type) {
+		case map[string]any, Properties:
+			tmp := value.(map[string]any)
+			buildMap(next, val, &tmp, appendMode)
 		default:
-			m := make(map[string]any)
-			rtmp[key] = m
-			buildMap(next, val, &m)
+			tmp := make(map[string]any)
+			buildMap(next, val, &tmp, appendMode)
+			panic(fmt.Errorf("can't assign %+v to %T(%+v)", tmp, value, value))
 		}
 	} else {
-		rtmp[path] = val
+		a, ok := rtmp[path]
+		if !ok || !appendMode {
+			rtmp[path] = val
+			return
+		}
+		switch a.(type) {
+		case []any:
+			rtmp[path] = append(a.([]any), val)
+		default:
+			rtmp[path] = []any{a, val}
+		}
 	}
 }
 
-func convertAny2Prop(v any) (Properties, error) {
-	if pm, ok := v.(Properties); ok {
-		return pm, nil
+func getMap(m map[string]any, path string) (any, bool) {
+	arr := strings.SplitN(path, ".", 2)
+	if len(arr) == 2 {
+		key := arr[0]
+		next := arr[1]
+		if sub, ok := m[key]; ok {
+			switch sub.(type) {
+			case map[string]any, Properties:
+				return getMap(sub.(map[string]any), next)
+			default:
+				return nil, false
+			}
+		}
 	}
-	if m, ok := v.(map[string]any); ok {
-		return buildProperties("", m), nil
-	}
+	a, ok := m[path]
+	return a, ok
+}
+
+func decodeToMap(v any) (map[string]any, error) {
 	m := make(map[string]any)
 	config := newDecodeConfig(&m)
 	decoder, err := mapstructure.NewDecoder(config)
@@ -45,15 +72,15 @@ func convertAny2Prop(v any) (Properties, error) {
 	if err != nil {
 		return nil, err
 	}
-	return buildProperties("", m), nil
+	return m, nil
 }
 
-func buildProperties(prePath string, m map[string]any) Properties {
-	tmp := make(Properties)
+func flatten(prePath string, m Properties) map[string]any {
+	tmp := make(map[string]any)
 	for k, v := range m {
 		switch v.(type) {
-		case map[string]any:
-			subTmp := buildProperties(path(prePath, k), v.(map[string]any))
+		case map[string]any, Properties:
+			subTmp := flatten(path(prePath, k), v.(map[string]any))
 			for subP, subV := range subTmp {
 				tmp[subP] = subV
 			}
@@ -113,7 +140,7 @@ func formatPropertiesPair(a any) (map[string]any, error) {
 			if err != nil {
 				return nil, err
 			}
-			for s, a2 := range buildProperties("", tmp) {
+			for s, a2 := range flatten("", tmp) {
 				props, err := formatPropertiesPair(a2)
 				if err != nil {
 					return nil, err

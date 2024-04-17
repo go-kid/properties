@@ -1,7 +1,7 @@
 package properties
 
 func Marshal(v any) ([]byte, error) {
-	pm, err := convertAny2Prop(v)
+	pm, err := NewFromAny(v)
 	if err != nil {
 		return nil, err
 	}

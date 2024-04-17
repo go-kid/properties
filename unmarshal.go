@@ -3,7 +3,7 @@ package properties
 import (
 	"bytes"
 	"fmt"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-kid/strconv2"
 	"strings"
 )
 
@@ -19,16 +19,15 @@ func Unmarshal(data []byte, v any) error {
 			if len(pairs) != 2 {
 				return fmt.Errorf("parse properties failed at line %d, no pairs found", i)
 			}
-			pm.Set(pairs[0], pairs[1]) //todo parse to any
+			parsedVal, err := strconv2.ParseAny(pairs[1])
+			if err != nil {
+				parsedVal = pairs[1]
+			}
+			pm.Set(pairs[0], parsedVal)
 		}
 		if err != nil {
 			break
 		}
 	}
-	config := newDecodeConfig(v)
-	decoder, err := mapstructure.NewDecoder(config)
-	if err != nil {
-		return err
-	}
-	return decoder.Decode(pm.Expand())
+	return pm.Unmarshal(v)
 }
