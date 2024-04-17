@@ -8,24 +8,24 @@ import (
 	"strings"
 )
 
-func buildMap(path string, val any, tmp map[string]any) map[string]any {
+func buildMap(path string, val any, tmp *map[string]any) {
+	rtmp := *tmp
 	arr := strings.SplitN(path, ".", 2)
 	if len(arr) > 1 {
 		key := arr[0]
 		next := arr[1]
-		if tmp[key] == nil {
-			tmp[key] = make(map[string]any)
-		}
-		switch sub := tmp[key]; sub.(type) {
-		case map[string]any, Properties:
-			tmp[key] = buildMap(next, val, sub.(map[string]any))
+		switch sub := rtmp[key]; sub.(type) {
+		case map[string]any:
+			m := sub.(map[string]any)
+			buildMap(next, val, &m)
 		default:
-			tmp[key] = sub
+			m := make(map[string]any)
+			rtmp[key] = m
+			buildMap(next, val, &m)
 		}
 	} else {
-		tmp[path] = val
+		rtmp[path] = val
 	}
-	return tmp
 }
 
 func convertAny2Prop(v any) (Properties, error) {

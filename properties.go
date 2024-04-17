@@ -46,7 +46,7 @@ func (p Properties) Get(key string) (any, bool) {
 	tmp := make(map[string]any)
 	for s, a := range p {
 		if i := strings.Index(s, key); i >= 0 && s[i+len(key)] == '.' {
-			buildMap(s, a, tmp)
+			buildMap(s, a, &tmp)
 		}
 	}
 	if len(tmp) == 0 {
@@ -113,7 +113,7 @@ func (p Properties) ValueSets() []*ValueSet {
 func (p Properties) Expand() map[string]any {
 	tmp := make(map[string]any)
 	for k, v := range p {
-		buildMap(k, v, tmp)
+		buildMap(k, v, &tmp)
 	}
 	return tmp
 }
