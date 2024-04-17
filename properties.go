@@ -10,15 +10,23 @@ import (
 type Properties map[string]any
 
 func (p Properties) Set(key string, val any) {
+	p.setWithMode(key, val, false)
+}
+
+func (p Properties) Add(key string, val any) {
+	p.setWithMode(key, val, true)
+}
+
+func (p Properties) setWithMode(key string, val any, appendMode bool) {
 	switch t := reflect.TypeOf(val); t.Kind() {
 	case reflect.Map, reflect.Struct:
-		err := p.flatSet(key, val)
+		err := p.flatSet(key, val, appendMode)
 		if err != nil {
 			panic(err)
 		}
 	case reflect.Pointer:
 		if eleKind := t.Elem().Kind(); eleKind == reflect.Map || eleKind == reflect.Struct {
-			err := p.flatSet(key, val)
+			err := p.flatSet(key, val, appendMode)
 			if err != nil {
 				panic(err)
 			}
@@ -26,7 +34,7 @@ func (p Properties) Set(key string, val any) {
 		}
 		fallthrough
 	default:
-		p.set(key, val)
+		p.set(key, val, appendMode)
 	}
 }
 
@@ -47,29 +55,32 @@ func (p Properties) Get(key string) (any, bool) {
 	return tmp, true
 }
 
-func (p Properties) flatSet(key string, val any) error {
+func (p Properties) flatSet(key string, val any, appendMode bool) error {
 	subProp, err := convertAny2Prop(val)
 	if err != nil {
 		return err
 	}
 	for s, a := range subProp {
-		p.set(path(key, s), a)
+		p.set(path(key, s), a, appendMode)
 	}
 	return nil
 }
 
-func (p Properties) set(key string, val any) {
-	a, ok := p.get(key)
-	if !ok {
-		p[key] = val
-		return
+func (p Properties) set(key string, val any, appendMode bool) {
+	if appendMode {
+		a, ok := p.get(key)
+		if !ok {
+			p[key] = val
+			return
+		}
+		switch a.(type) {
+		case []any:
+			p[key] = append(a.([]any), val)
+		default:
+			p[key] = []any{a, val}
+		}
 	}
-	switch a.(type) {
-	case []any:
-		p[key] = append(a.([]any), val)
-	default:
-		p[key] = []any{a, val}
-	}
+	p[key] = val
 }
 
 func (p Properties) get(key string) (any, bool) {
