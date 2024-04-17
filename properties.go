@@ -11,27 +11,27 @@ import (
 type Properties map[string]any
 
 func (p Properties) Set(key string, val any) {
-	p.setWithMode(key, val, false)
+	p.SetWithMode(key, val, 0)
 }
 
 func (p Properties) Add(key string, val any) {
-	p.setWithMode(key, val, true)
+	p.SetWithMode(key, val, Append)
 }
 
-func (p Properties) setWithMode(key string, val any, appendMode bool) {
+func (p Properties) SetWithMode(key string, val any, mode SetMode) {
 	if val == nil {
-		p.set(key, val, appendMode)
+		p.set(key, val, mode)
 		return
 	}
 	switch t := reflect.TypeOf(val); t.Kind() {
 	case reflect.Map, reflect.Struct:
-		err := p.flatSet(key, val, appendMode)
+		err := p.flatSet(key, val, mode)
 		if err != nil {
 			panic(err)
 		}
 	case reflect.Pointer:
 		if eleKind := t.Elem().Kind(); eleKind == reflect.Map || eleKind == reflect.Struct {
-			err := p.flatSet(key, val, appendMode)
+			err := p.flatSet(key, val, mode)
 			if err != nil {
 				panic(err)
 			}
@@ -39,7 +39,7 @@ func (p Properties) setWithMode(key string, val any, appendMode bool) {
 		}
 		fallthrough
 	default:
-		p.set(key, val, appendMode)
+		p.set(key, val, mode)
 	}
 }
 
@@ -47,17 +47,17 @@ func (p Properties) Get(key string) (any, bool) {
 	return p.get(key)
 }
 
-func (p Properties) flatSet(key string, val any, appendMode bool) error {
+func (p Properties) flatSet(key string, val any, mode SetMode) error {
 	subProp, err := decodeToMap(val)
 	if err != nil {
 		return err
 	}
-	buildMap(key, subProp, (*map[string]any)(&p), appendMode)
+	p.set(key, subProp, mode)
 	return nil
 }
 
-func (p Properties) set(key string, val any, appendMode bool) {
-	buildMap(key, val, (*map[string]any)(&p), appendMode)
+func (p Properties) set(key string, val any, mode SetMode) {
+	buildMap(key, val, (*map[string]any)(&p), mode)
 }
 
 func (p Properties) get(key string) (any, bool) {

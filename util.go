@@ -8,7 +8,18 @@ import (
 	"strings"
 )
 
-func buildMap(path string, val any, tmp *map[string]any, appendMode bool) {
+type SetMode uint32
+
+func (m SetMode) Eq(mode SetMode) bool {
+	return m&mode > 0
+}
+
+const (
+	Append SetMode = 1 << iota
+	OverwriteType
+)
+
+func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 	rtmp := *tmp
 	arr := strings.SplitN(path, ".", 2)
 	if len(arr) == 2 {
@@ -22,15 +33,19 @@ func buildMap(path string, val any, tmp *map[string]any, appendMode bool) {
 		switch value.(type) {
 		case map[string]any, Properties:
 			tmp := value.(map[string]any)
-			buildMap(next, val, &tmp, appendMode)
+			buildMap(next, val, &tmp, mode)
 		default:
 			tmp := make(map[string]any)
-			buildMap(next, val, &tmp, appendMode)
-			panic(fmt.Errorf("can't assign %+v to %T(%+v)", tmp, value, value))
+			buildMap(next, val, &tmp, mode)
+			if mode.Eq(OverwriteType) {
+				rtmp[key] = tmp
+			} else {
+				panic(fmt.Errorf("can't assign %+v to %T(%+v)", tmp, value, value))
+			}
 		}
 	} else {
 		a, ok := rtmp[path]
-		if !ok || !appendMode {
+		if !ok || !mode.Eq(Append) {
 			rtmp[path] = val
 			return
 		}

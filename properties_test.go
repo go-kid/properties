@@ -18,7 +18,7 @@ func TestProperties_Build(t *testing.T) {
 		tests := []struct {
 			name   string
 			inputs []input
-			want   map[string]any
+			want   Properties
 		}{
 			{
 				name: "1",
@@ -58,7 +58,7 @@ func TestProperties_Build(t *testing.T) {
 				pm.Set(a.key, a.val)
 			}
 			t.Run(tt.name, func(t *testing.T) {
-				assert.Equal(t, tt.want, map[string]any(pm))
+				assert.Equal(t, tt.want, pm)
 			})
 		}
 	})
@@ -67,7 +67,7 @@ func TestProperties_Build(t *testing.T) {
 		tests := []struct {
 			name   string
 			inputs []input
-			want   map[string]any
+			want   Properties
 		}{
 			{
 				name: "1",
@@ -95,7 +95,7 @@ func TestProperties_Build(t *testing.T) {
 				pm.Add(a.key, a.val)
 			}
 			t.Run(tt.name, func(t *testing.T) {
-				assert.Equal(t, tt.want, map[string]any(pm))
+				assert.Equal(t, tt.want, pm)
 			})
 		}
 	})
@@ -211,12 +211,12 @@ func TestProperties_Set_Get(t *testing.T) {
 			name: "",
 			p:    New(),
 			args: args{
-				key: "a",
+				key: "a.d",
 				val: 123,
 			},
 			wants: []wants{
 				{
-					key:   "b",
+					key:   "a.b.c.d",
 					want:  nil,
 					want1: false,
 				},
@@ -327,6 +327,120 @@ func TestProperties_Unmarshal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.wantErr(t, tt.p.Unmarshal(tt.args.v), fmt.Sprintf("Unmarshal(%v)", tt.args.v))
 			assert.Equal(t, tPerson, tt.args.v)
+		})
+	}
+}
+
+func TestProperties_SetWithMode(t *testing.T) {
+	type args struct {
+		key  string
+		val  any
+		mode SetMode
+	}
+	tests := []struct {
+		name  string
+		p     Properties
+		args  []args
+		wants Properties
+	}{
+		{
+			name: "default overwrite",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a.b",
+					val:  1,
+					mode: 0,
+				},
+				{
+					key:  "a.b",
+					val:  2,
+					mode: 0,
+				},
+			},
+			wants: map[string]any{
+				"a": map[string]any{
+					"b": 2,
+				},
+			},
+		},
+		{
+			name: "append",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a.b",
+					val:  1,
+					mode: Append,
+				},
+				{
+					key:  "a.b",
+					val:  2,
+					mode: Append,
+				},
+			},
+			wants: map[string]any{
+				"a": map[string]any{
+					"b": []any{1, 2},
+				},
+			},
+		},
+		{
+			name: "overwrite type error",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a.b",
+					val:  1,
+					mode: 0,
+				},
+				{
+					key:  "a.b.c",
+					val:  2,
+					mode: 0,
+				},
+			},
+			wants: map[string]any{
+				"a": map[string]any{
+					"b": []any{1, 2},
+				},
+			},
+		},
+		{
+			name: "overwrite type",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a.b",
+					val:  1,
+					mode: OverwriteType,
+				},
+				{
+					key:  "a.b.c",
+					val:  2,
+					mode: OverwriteType,
+				},
+			},
+			wants: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil {
+					assert.Error(t, err.(error))
+				}
+			}()
+			for _, arg := range tt.args {
+				tt.p.SetWithMode(arg.key, arg.val, arg.mode)
+			}
+			assert.Equal(t, tt.wants, tt.p)
 		})
 	}
 }
