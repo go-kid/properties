@@ -126,7 +126,7 @@ func (p Properties) Marshal() ([]byte, error) {
 			return nil, err
 		}
 		for fk, fv := range f {
-			pairs[key+fk] = fv
+			pairs[path(key, fk)] = fv
 		}
 	}
 
