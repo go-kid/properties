@@ -93,13 +93,11 @@ func (p Properties) ToPropertiesMap() map[string]any {
 func (p Properties) Marshal() ([]byte, error) {
 	var pairs = make(map[string]any)
 	for key, a := range p.ToPropertiesMap() {
-		f, err := formatPropertiesPair(a)
+		f, err := formatPropertiesPair(key, a)
 		if err != nil {
 			return nil, err
 		}
-		for fk, fv := range f {
-			pairs[path(key, fk)] = fv
-		}
+		assignMap(f, pairs)
 	}
 
 	var sb strings.Builder
