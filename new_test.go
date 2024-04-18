@@ -5,19 +5,19 @@ import (
 	"testing"
 )
 
-func TestNewFromMap(t *testing.T) {
+func TestToPropertiesMap(t *testing.T) {
 	type args struct {
-		m map[string]any
+		m Properties
 	}
 	tests := []struct {
 		name string
 		args args
-		want Properties
+		want map[string]any
 	}{
 		{
 			name: "1",
 			args: args{
-				m: NewFromMap(map[string]any{
+				m: Properties{
 					"a": map[string]any{
 						"b": map[string]any{
 							"c":  123,
@@ -26,7 +26,7 @@ func TestNewFromMap(t *testing.T) {
 						"b2": "bar",
 						"c":  []string{"foo", "bar"},
 					},
-				}),
+				},
 			},
 			want: map[string]any{
 				"a.b.c":  123,
@@ -35,10 +35,17 @@ func TestNewFromMap(t *testing.T) {
 				"a.c":    []string{"foo", "bar"},
 			},
 		},
+		{
+			name: "1",
+			args: args{
+				m: tPersonMap,
+			},
+			want: tPersonProp,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewFromMap(tt.args.m); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.args.m.ToPropertiesMap(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewFromMap() = %v, want %v", got, tt.want)
 			}
 		})
@@ -97,7 +104,7 @@ func TestNewFromAny(t *testing.T) {
 			args: args{
 				v: tPerson,
 			},
-			want:    tPersonProp,
+			want:    tPersonMap,
 			wantErr: false,
 		},
 		{

@@ -2,6 +2,7 @@ package properties
 
 import (
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"reflect"
 	"sort"
 	"strings"
@@ -10,23 +11,27 @@ import (
 type Properties map[string]any
 
 func (p Properties) Set(key string, val any) {
-	p.setWithMode(key, val, false)
+	p.SetWithMode(key, val, 0)
 }
 
 func (p Properties) Add(key string, val any) {
-	p.setWithMode(key, val, true)
+	p.SetWithMode(key, val, Append)
 }
 
-func (p Properties) setWithMode(key string, val any, appendMode bool) {
+func (p Properties) SetWithMode(key string, val any, mode SetMode) {
+	if val == nil {
+		p.set(key, val, mode)
+		return
+	}
 	switch t := reflect.TypeOf(val); t.Kind() {
 	case reflect.Map, reflect.Struct:
-		err := p.flatSet(key, val, appendMode)
+		err := p.flatSet(key, val, mode)
 		if err != nil {
 			panic(err)
 		}
 	case reflect.Pointer:
 		if eleKind := t.Elem().Kind(); eleKind == reflect.Map || eleKind == reflect.Struct {
-			err := p.flatSet(key, val, appendMode)
+			err := p.flatSet(key, val, mode)
 			if err != nil {
 				panic(err)
 			}
@@ -34,59 +39,29 @@ func (p Properties) setWithMode(key string, val any, appendMode bool) {
 		}
 		fallthrough
 	default:
-		p.set(key, val, appendMode)
+		p.set(key, val, mode)
 	}
 }
 
 func (p Properties) Get(key string) (any, bool) {
-	v, ok := p.get(key)
-	if ok {
-		return v, true
-	}
-	tmp := make(map[string]any)
-	for s, a := range p {
-		if i := strings.Index(s, key); i >= 0 && s[i+len(key)] == '.' {
-			buildMap(s, a, &tmp)
-		}
-	}
-	if len(tmp) == 0 {
-		return nil, false
-	}
-	return tmp, true
+	return p.get(key)
 }
 
-func (p Properties) flatSet(key string, val any, appendMode bool) error {
-	subProp, err := convertAny2Prop(val)
+func (p Properties) flatSet(key string, val any, mode SetMode) error {
+	subProp, err := decodeToMap(val)
 	if err != nil {
 		return err
 	}
-	for s, a := range subProp {
-		p.set(path(key, s), a, appendMode)
-	}
+	p.set(key, subProp, mode)
 	return nil
 }
 
-func (p Properties) set(key string, val any, appendMode bool) {
-	a, ok := p.get(key)
-	if !ok {
-		p[key] = val
-		return
-	}
-	if appendMode {
-		switch a.(type) {
-		case []any:
-			p[key] = append(a.([]any), val)
-		default:
-			p[key] = []any{a, val}
-		}
-	} else {
-		p[key] = val
-	}
+func (p Properties) set(key string, val any, mode SetMode) {
+	buildMap(key, val, (*map[string]any)(&p), mode)
 }
 
 func (p Properties) get(key string) (any, bool) {
-	a, ok := p[key]
-	return a, ok
+	return getMap(p, key)
 }
 
 type ValueSet struct {
@@ -95,9 +70,10 @@ type ValueSet struct {
 }
 
 func (p Properties) ValueSets() []*ValueSet {
-	sets := make([]*ValueSet, len(p))
+	properties := p.ToPropertiesMap()
+	sets := make([]*ValueSet, len(properties))
 	i := 0
-	for s, a := range p {
+	for s, a := range properties {
 		sets[i] = &ValueSet{
 			Key:   s,
 			Value: a,
@@ -110,24 +86,18 @@ func (p Properties) ValueSets() []*ValueSet {
 	return sets
 }
 
-func (p Properties) Expand() map[string]any {
-	tmp := make(map[string]any)
-	for k, v := range p {
-		buildMap(k, v, &tmp)
-	}
-	return tmp
+func (p Properties) ToPropertiesMap() map[string]any {
+	return flatten("", p)
 }
 
 func (p Properties) Marshal() ([]byte, error) {
 	var pairs = make(map[string]any)
-	for key, a := range p {
-		f, err := formatPropertiesPair(a)
+	for key, a := range p.ToPropertiesMap() {
+		f, err := formatPropertiesPair(key, a)
 		if err != nil {
 			return nil, err
 		}
-		for fk, fv := range f {
-			pairs[path(key, fk)] = fv
-		}
+		assignMap(f, pairs)
 	}
 
 	var sb strings.Builder
@@ -155,4 +125,13 @@ func (p Properties) Marshal() ([]byte, error) {
 		sb.WriteString(fmt.Sprintf("%s=%v\n", key, v))
 	}
 	return []byte(sb.String()), nil
+}
+
+func (p Properties) Unmarshal(v any) error {
+	config := newDecodeConfig(v)
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(p)
 }
