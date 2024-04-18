@@ -22,40 +22,83 @@ const (
 func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 	rtmp := *tmp
 	arr := strings.SplitN(path, ".", 2)
+	key, idx, hasIdx := arrSplit(arr[0])
+	value := rtmp[key]
 	if len(arr) == 2 {
-		key := arr[0]
 		next := arr[1]
-		value := rtmp[key]
+		//value := rtmp[key]
 		if value == nil {
-			value = make(map[string]any)
-			rtmp[key] = value
+			if hasIdx {
+				value = make([]any, idx)
+			} else {
+				value = make(map[string]any)
+			}
 		}
 		switch value.(type) {
 		case map[string]any, Properties:
 			tmp := value.(map[string]any)
 			buildMap(next, val, &tmp, mode)
+		case []any:
+			tmpArr := value.([]any)
+			var subM map[string]any
+			if len(tmpArr) > idx {
+				if am, ok := tmpArr[idx].(map[string]any); ok {
+					subM = am
+				} else if am != nil {
+					if mode.Eq(OverwriteType) {
+						subM = make(map[string]any)
+					} else {
+						panic(fmt.Errorf("%T(%v) is not map[string]interface{}, can't set sub values", am, am))
+					}
+				}
+			}
+			if subM == nil {
+				subM = make(map[string]any)
+			}
+			buildMap(next, val, &subM, mode)
+			value = setSlice(tmpArr, idx, subM)
 		default:
 			tmp := make(map[string]any)
 			buildMap(next, val, &tmp, mode)
 			if mode.Eq(OverwriteType) {
-				rtmp[key] = tmp
+				value = tmp
 			} else {
-				panic(fmt.Errorf("can't assign %+v to %T(%+v)", tmp, value, value))
+				panic(fmt.Errorf("can't assign %T(%v) to %T(%v)", tmp, tmp, value, value))
 			}
 		}
+		//rtmp[key] = value
 	} else {
-		a, ok := rtmp[path]
-		if !ok || !mode.Eq(Append) {
-			rtmp[path] = val
-			return
-		}
-		switch a.(type) {
-		case []any:
-			rtmp[path] = append(a.([]any), val)
-		default:
-			rtmp[path] = []any{a, val}
+		//value, ok := rtmp[key]
+		if hasIdx {
+			if value == nil {
+				rtmp[key] = setSlice([]any{}, idx, val)
+				return
+			}
+			switch value.(type) {
+			case []any:
+				value = setSlice(value.([]any), idx, val)
+			default:
+				tmp := setSlice([]any{}, idx, val)
+				if mode.Eq(OverwriteType) {
+					value = tmp
+				} else {
+					panic(fmt.Errorf("can't assign %T(%v) to %T(%v)", tmp, tmp, value, value))
+				}
+			}
+		} else {
+			if value == nil || !mode.Eq(Append) {
+				rtmp[key] = val
+				return
+			}
+			switch value.(type) {
+			case []any:
+				value = append(value.([]any), val)
+			default:
+				value = []any{value, val}
+			}
 		}
 	}
+	rtmp[key] = value
 }
 
 func getMap(m map[string]any, path string) (any, bool) {
@@ -166,36 +209,6 @@ func formatPropertiesPair(key string, a any) (map[string]any, error) {
 		}
 	}
 	return result, nil
-}
-
-func parsePropertiesPair(pm Properties, pairStr string) error {
-	pairs := strings.SplitN(pairStr, "=", 2)
-	if len(pairs) != 2 {
-		return fmt.Errorf("no pairs found: %#v", pairStr)
-	}
-
-	key, idx, hasIdx := arrSplit(pairs[0])
-	var val any = pairs[1]
-	if parsedVal, err := strconv2.ParseAny(pairs[1]); err == nil {
-		val = parsedVal
-	}
-	if hasIdx {
-		var arr []any
-		if got, ok := pm.Get(key); ok {
-			switch got.(type) {
-			case []any:
-				arr = setSlice(got.([]any), idx, val)
-			default:
-				return fmt.Errorf("can't parse %#v to array", got)
-			}
-		} else {
-			arr = make([]any, idx+1)
-			arr[idx] = val
-		}
-		val = arr
-	}
-	pm.Set(key, val)
-	return nil
 }
 
 func path(first, second string) string {
