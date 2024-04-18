@@ -56,6 +56,33 @@ FileApiConfig[2].version=1
 		panic(err)
 	}
 	fmt.Println(string(marshal))
+	p, err := NewFromAny(pm)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(p.Get("FileApiConfig[-1]"))
+
+	fmt.Println(p.Get("FileApiConfig[0]"))
+	fmt.Println(p.Get("FileApiConfig[0].file_type[0]"))
+	fmt.Println(p.Get("FileApiConfig[0].file_type[1]"))
+	fmt.Println(p.Get("FileApiConfig[0].file_type[2]"))
+
+	fmt.Println(p.Get("FileApiConfig[1]"))
+	fmt.Println(p.Get("FileApiConfig[1].file_type[0]"))
+	fmt.Println(p.Get("FileApiConfig[1].file_type[1]"))
+	fmt.Println(p.Get("FileApiConfig[1].file_type[2]"))
+
+	fmt.Println(p.Get("FileApiConfig[2]"))
+	fmt.Println(p.Get("FileApiConfig[2].file_type[0]"))
+	fmt.Println(p.Get("FileApiConfig[2].file_type[1]"))
+	fmt.Println(p.Get("FileApiConfig[2].file_type[2]"))
+
+	fmt.Println(p.Get("FileApiConfig[3]"))
+	fmt.Println(p.Get("FileApiConfig[3].file_type[0]"))
+	fmt.Println(p.Get("FileApiConfig[3].file_type[1]"))
+	fmt.Println(p.Get("FileApiConfig[3].file_type[2]"))
+
 	//pm.Set("a.b[0].c[1]", 1)
 	//pm.Set("a.b[0].c[2].d", 1)
 	//pm.Add("a.b[0].c[2].d", 2)

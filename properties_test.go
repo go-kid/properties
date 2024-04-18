@@ -312,6 +312,7 @@ func TestProperties_Unmarshal(t *testing.T) {
 		name    string
 		p       Properties
 		args    args
+		want    any
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
@@ -320,13 +321,14 @@ func TestProperties_Unmarshal(t *testing.T) {
 			args: args{
 				&person{},
 			},
+			want:    tPerson,
 			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.wantErr(t, tt.p.Unmarshal(tt.args.v), fmt.Sprintf("Unmarshal(%v)", tt.args.v))
-			assert.Equal(t, tPerson, tt.args.v)
+			assert.Equal(t, tt.want, tt.args.v)
 		})
 	}
 }
