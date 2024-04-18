@@ -23,11 +23,10 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 	rtmp := *tmp
 	arr := strings.SplitN(path, ".", 2)
 	key, idx, hasIdx := arrSplit(arr[0])
-	value := rtmp[key]
+	value, ok := rtmp[key]
 	if len(arr) == 2 {
 		next := arr[1]
-		//value := rtmp[key]
-		if value == nil {
+		if !ok {
 			if hasIdx {
 				value = make([]any, idx)
 			} else {
@@ -66,11 +65,9 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				panic(fmt.Errorf("can't assign %T(%v) to %T(%v)", tmp, tmp, value, value))
 			}
 		}
-		//rtmp[key] = value
 	} else {
-		//value, ok := rtmp[key]
 		if hasIdx {
-			if value == nil {
+			if !ok {
 				rtmp[key] = setSlice([]any{}, idx, val)
 				return
 			}
@@ -86,7 +83,7 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				}
 			}
 		} else {
-			if value == nil || !mode.Eq(Append) {
+			if !ok || !mode.Eq(Append) {
 				rtmp[key] = val
 				return
 			}
