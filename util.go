@@ -34,9 +34,12 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 			}
 		}
 		switch value.(type) {
-		case map[string]any, Properties:
+		case map[string]any:
 			tmp := value.(map[string]any)
 			buildMap(next, val, &tmp, mode)
+		case Properties:
+			tmp := value.(Properties)
+			buildMap(next, val, (*map[string]any)(&tmp), mode)
 		case []any:
 			tmpArr := value.([]any)
 			var subM map[string]any
@@ -114,8 +117,10 @@ func getMap(m map[string]any, path string) (any, bool) {
 		}
 		next := arr[1]
 		switch value.(type) {
-		case map[string]any, Properties:
+		case map[string]any:
 			return getMap(value.(map[string]any), next)
+		case Properties:
+			return getMap(value.(Properties), next)
 		default:
 			return nil, false
 		}
@@ -147,11 +152,12 @@ func flatten(prePath string, m Properties) map[string]any {
 	tmp := make(map[string]any)
 	for k, v := range m {
 		switch v.(type) {
-		case map[string]any, Properties:
+		case map[string]any:
 			subTmp := flatten(path(prePath, k), v.(map[string]any))
-			for subP, subV := range subTmp {
-				tmp[subP] = subV
-			}
+			assignMap(subTmp, tmp)
+		case Properties:
+			subTmp := flatten(path(prePath, k), v.(Properties))
+			assignMap(subTmp, tmp)
 		default:
 			tmp[path(prePath, k)] = v
 		}
