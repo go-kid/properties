@@ -34,12 +34,9 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 			}
 		}
 		switch value.(type) {
-		case map[string]any:
+		case map[string]any, Properties:
 			tmp := value.(map[string]any)
 			buildMap(next, val, &tmp, mode)
-		case Properties:
-			tmp := value.(Properties)
-			buildMap(next, val, (*map[string]any)(&tmp), mode)
 		case []any:
 			tmpArr := value.([]any)
 			var subM map[string]any
@@ -103,32 +100,43 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 
 func getMap(m map[string]any, path string) (any, bool) {
 	arr := strings.SplitN(path, ".", 2)
+	key, idx, hasIdx := arrSplit(arr[0])
+	value, ok := m[key]
+	if !ok {
+		return nil, false
+	}
 	if len(arr) == 2 {
-		key := arr[0]
-		next := arr[1]
-		if sub, ok := m[key]; ok {
-			switch sub.(type) {
-			case map[string]any:
-				return getMap(sub.(map[string]any), next)
-			case Properties:
-				return getMap(sub.(Properties), next)
-			default:
+		if hasIdx {
+			value, ok = getAt(value, idx)
+			if !ok {
 				return nil, false
 			}
 		}
+		next := arr[1]
+		switch value.(type) {
+		case map[string]any, Properties:
+			return getMap(value.(map[string]any), next)
+		default:
+			return nil, false
+		}
+	} else {
+		if hasIdx {
+			return getAt(value, idx)
+		}
+		return value, ok
 	}
-	a, ok := m[path]
-	return a, ok
+}
+
+func getAt(value any, idx int) (any, bool) {
+	if arr, ok := value.([]any); ok && idx >= 0 && idx < len(arr) {
+		return arr[idx], true
+	}
+	return nil, false
 }
 
 func decodeToMap(v any) (map[string]any, error) {
 	m := make(map[string]any)
-	config := newDecodeConfig(&m)
-	decoder, err := mapstructure.NewDecoder(config)
-	if err != nil {
-		return nil, err
-	}
-	err = decoder.Decode(v)
+	err := decode(v, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -139,17 +147,25 @@ func flatten(prePath string, m Properties) map[string]any {
 	tmp := make(map[string]any)
 	for k, v := range m {
 		switch v.(type) {
-		case map[string]any:
+		case map[string]any, Properties:
 			subTmp := flatten(path(prePath, k), v.(map[string]any))
-			assignMap(subTmp, tmp)
-		case Properties:
-			subTmp := flatten(path(prePath, k), v.(Properties))
-			assignMap(subTmp, tmp)
+			for subP, subV := range subTmp {
+				tmp[subP] = subV
+			}
 		default:
 			tmp[path(prePath, k)] = v
 		}
 	}
 	return tmp
+}
+
+func decode(input any, result any) error {
+	config := newDecodeConfig(result)
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(input)
 }
 
 func newDecodeConfig(v any) *mapstructure.DecoderConfig {
@@ -237,16 +253,18 @@ func assignMap(f, t map[string]any) {
 }
 
 func arrSplit(s string) (key string, idx int, hasIdx bool) {
-	var (
-		ql, qr int
-	)
 	key = s
-	for i, c := range s {
-		switch c {
-		case '[':
+	if ls := len(s); ls < 3 || s[ls-1] != ']' {
+		return
+	}
+	var (
+		ql int
+		qr = len(s) - 1
+	)
+	for i := qr; i >= 0; i-- {
+		if s[i] == '[' {
 			ql = i + 1
-		case ']':
-			qr = i
+			break
 		}
 	}
 	if ql >= qr {

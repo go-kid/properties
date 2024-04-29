@@ -2,7 +2,6 @@ package properties
 
 import (
 	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"reflect"
 	"sort"
 	"strings"
@@ -128,10 +127,13 @@ func (p Properties) Marshal() ([]byte, error) {
 }
 
 func (p Properties) Unmarshal(v any) error {
-	config := newDecodeConfig(v)
-	decoder, err := mapstructure.NewDecoder(config)
-	if err != nil {
-		return err
+	return decode(p, v)
+}
+
+func (p Properties) UnmarshalKey(k string, v any) error {
+	input, ok := p.Get(k)
+	if !ok {
+		return fmt.Errorf("unmarshal key error: key '%v' is not found", k)
 	}
-	return decoder.Decode(p)
+	return decode(input, v)
 }
