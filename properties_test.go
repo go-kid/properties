@@ -446,3 +446,41 @@ func TestProperties_SetWithMode(t *testing.T) {
 		})
 	}
 }
+
+func TestProperties_DBDriver(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		value   any
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "normal",
+			value: map[string]any{
+				"foo": "bar",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "array",
+			value: map[string]any{
+				"arr": []any{
+					"foo", "bar",
+				},
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p1, err := NewFromAny(tt.value)
+			tt.wantErr(t, err, fmt.Sprintf("NewFromAny(%v)", tt.value))
+			value, err := p1.Value()
+			tt.wantErr(t, err, fmt.Sprintf("%v.Value()", p1))
+			p2 := New()
+			err = p2.Scan(value)
+			tt.wantErr(t, err, fmt.Sprintf("Scan(%v)", tt.value))
+			assert.Equal(t, p1, p2)
+		})
+	}
+}

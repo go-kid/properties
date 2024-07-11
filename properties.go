@@ -1,7 +1,10 @@
 package properties
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"reflect"
 	"sort"
 	"strings"
@@ -136,4 +139,22 @@ func (p Properties) UnmarshalKey(k string, v any) error {
 		return fmt.Errorf("unmarshal key error: key '%v' is not found", k)
 	}
 	return decode(input, v)
+}
+
+func (p Properties) Scan(src interface{}) error {
+	if src == nil {
+		return nil
+	}
+	srcBytes, ok := src.([]byte)
+	if !ok {
+		return errors.Errorf("invalid value type %+v, %T", src, src)
+	}
+	return json.Unmarshal(srcBytes, &p)
+}
+
+func (p Properties) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return json.Marshal(p)
 }
