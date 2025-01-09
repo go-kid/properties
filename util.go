@@ -33,18 +33,15 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				value = make(map[string]any)
 			}
 		}
-		switch value.(type) {
+		switch tval := value.(type) {
 		case map[string]any:
-			tmp := value.(map[string]any)
-			buildMap(next, val, &tmp, mode)
+			buildMap(next, val, &tval, mode)
 		case Properties:
-			tmp := value.(Properties)
-			buildMap(next, val, (*map[string]any)(&tmp), mode)
+			buildMap(next, val, (*map[string]any)(&tval), mode)
 		case []any:
-			tmpArr := value.([]any)
 			var subM map[string]any
-			if len(tmpArr) > idx {
-				if am, ok := tmpArr[idx].(map[string]any); ok {
+			if len(tval) > idx {
+				if am, ok := tval[idx].(map[string]any); ok {
 					subM = am
 				} else if am != nil {
 					if mode.Eq(OverwriteType) {
@@ -58,7 +55,7 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				subM = make(map[string]any)
 			}
 			buildMap(next, val, &subM, mode)
-			value = setSlice(tmpArr, idx, subM)
+			value = setSlice(tval, idx, subM)
 		default:
 			tmp := make(map[string]any)
 			buildMap(next, val, &tmp, mode)
@@ -74,9 +71,9 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				rtmp[key] = setSlice([]any{}, idx, val)
 				return
 			}
-			switch value.(type) {
+			switch tval := value.(type) {
 			case []any:
-				value = setSlice(value.([]any), idx, val)
+				value = setSlice(tval, idx, val)
 			default:
 				tmp := setSlice([]any{}, idx, val)
 				if mode.Eq(OverwriteType) {
@@ -90,11 +87,21 @@ func buildMap(path string, val any, tmp *map[string]any, mode SetMode) {
 				rtmp[key] = val
 				return
 			}
-			switch value.(type) {
+			switch tval := value.(type) {
 			case []any:
-				value = append(value.([]any), val)
+				switch rtval := val.(type) {
+				case []any:
+					value = append(tval, rtval...)
+				default:
+					value = append(tval, rtval)
+				}
 			default:
-				value = []any{value, val}
+				switch rtval := val.(type) {
+				case []any:
+					value = append([]any{tval}, rtval...)
+				default:
+					value = []any{tval, rtval}
+				}
 			}
 		}
 	}

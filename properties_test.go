@@ -367,7 +367,7 @@ func TestProperties_SetWithMode(t *testing.T) {
 			},
 		},
 		{
-			name: "append",
+			name: "append value to value",
 			p:    New(),
 			args: []args{
 				{
@@ -385,6 +385,63 @@ func TestProperties_SetWithMode(t *testing.T) {
 				"a": map[string]any{
 					"b": []any{1, 2},
 				},
+			},
+		},
+		{
+			name: "append array to value",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a",
+					val:  1,
+					mode: Append,
+				},
+				{
+					key:  "a",
+					val:  []any{2},
+					mode: Append,
+				},
+			},
+			wants: map[string]any{
+				"a": []any{1, 2},
+			},
+		},
+		{
+			name: "append value to array",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a",
+					val:  []any{1},
+					mode: Append,
+				},
+				{
+					key:  "a",
+					val:  2,
+					mode: Append,
+				},
+			},
+			wants: map[string]any{
+				"a": []any{1, 2},
+			},
+		},
+		{
+			name: "append array to array",
+			p:    New(),
+			args: []args{
+				{
+					key:  "a",
+					val:  []any{1},
+					mode: Append,
+				},
+				{
+					key:  "a",
+					val:  []any{2},
+					mode: Append,
+				},
+			},
+			wants: map[string]any{
+				"a": []any{1, 2},
 			},
 		},
 		{
